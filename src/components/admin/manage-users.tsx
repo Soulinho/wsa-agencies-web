@@ -41,9 +41,10 @@ interface ActionMenuProps {
   isOpen: boolean;
   position: { top: number; left: number };
   onClose: () => void;
+  onDelete: () => void;
 }
 
-const ActionMenu = ({ isOpen, position, onClose }: ActionMenuProps) => {
+const ActionMenu = ({ isOpen, position, onClose, onDelete }: ActionMenuProps) => {
   if (!isOpen) return null;
 
   return createPortal(
@@ -55,7 +56,15 @@ const ActionMenu = ({ isOpen, position, onClose }: ActionMenuProps) => {
       >
         <button className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">Editar</button>
         <button className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm">Habilitar Usuario</button>
-        <button className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 text-sm">Eliminar</button>
+        <button
+          onClick={() => {
+            onDelete();
+            onClose();
+          }}
+          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 text-sm"
+        >
+          Eliminar
+        </button>
       </div>
     </div>,
     document.body
@@ -70,6 +79,7 @@ const ManageUsers = () => {
   const [roleFilter, setRoleFilter] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [activeMenu, setActiveMenu] = useState<number | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,34 +87,26 @@ const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Debounce para búsqueda en tiempo real
+  // Debounce para búsqueda
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-      setCurrentPage(1); // Reinicia la página cuando cambia la búsqueda
+      setCurrentPage(1);
     }, 500);
-
-    return () => {
-      clearTimeout(handler);
-    };
+    return () => clearTimeout(handler);
   }, [searchTerm]);
 
   const fetchUsers = async (page = 1, role = '', search = '') => {
     setLoading(true);
     setErrorMsg('');
     try {
-      // Ajusta los parámetros para que coincidan con el backend
-      const params: any = {
-        page,
-        limit: 10,
-      };
-
+      const params: any = { page, limit: 10 };
       if (role) params.role = role;
       if (search) params.searchTerm = search;
 
       const { data } = await axios.get<GetUsersResponse>(`${API_URL}/users`, { params });
 
-      if (data.users && data.users.length > 0) {
+      if (data.users) {
         setUsers(
           data.users.map((u) => ({
             _id: u._id,
@@ -127,25 +129,30 @@ const ManageUsers = () => {
       console.error('Error al cargar usuarios:', error);
       setUsers([]);
       setErrorMsg('Error al cargar usuarios. Intente nuevamente más tarde.');
-      setTotalPages(1);
-      setCurrentPage(1);
     } finally {
       setLoading(false);
     }
   };
 
-  const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages && page !== currentPage) {
-      setCurrentPage(page);
+  const deleteUser = async (userId: string) => {
+    const confirm = window.confirm('¿Estás seguro de que deseas eliminar este usuario?');
+    if (!confirm) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_URL}/users/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      fetchUsers(currentPage, roleFilter, debouncedSearchTerm);
+    } catch (error) {
+      console.error('Error al eliminar usuario:', error);
+      alert('Hubo un error al intentar eliminar el usuario.');
     }
   };
 
-  // Recarga usuarios cuando cambian página, filtro o búsqueda (con debounce)
-  useEffect(() => {
-    fetchUsers(currentPage, roleFilter, debouncedSearchTerm);
-  }, [currentPage, roleFilter, debouncedSearchTerm]);
-
-  const handleMenuClick = (event: React.MouseEvent, index: number) => {
+  const handleMenuClick = (event: React.MouseEvent, index: number, userId: string) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -155,37 +162,35 @@ const ManageUsers = () => {
     }
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
     let left = rect.left - 180;
     let top = rect.top + rect.height + 5;
 
-    if (left < 10) {
-      left = rect.right - 192;
-    }
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
 
-    if (viewportWidth < 768) {
-      left = Math.max(10, Math.min(left, viewportWidth - 202));
-    }
-
-    if (top + 120 > viewportHeight) {
-      top = rect.top - 125;
-    }
+    if (left < 10) left = rect.right - 192;
+    if (viewportWidth < 768) left = Math.max(10, Math.min(left, viewportWidth - 202));
+    if (top + 120 > viewportHeight) top = rect.top - 125;
 
     setMenuPosition({ top, left });
     setActiveMenu(index);
+    setSelectedUserId(userId);
   };
 
-  const closeMenu = () => setActiveMenu(null);
+  const closeMenu = () => {
+    setActiveMenu(null);
+    setSelectedUserId(null);
+  };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+      setCurrentPage(page);
+    }
+  };
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (activeMenu !== null) setActiveMenu(null);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [activeMenu]);
+    fetchUsers(currentPage, roleFilter, debouncedSearchTerm);
+  }, [currentPage, roleFilter, debouncedSearchTerm]);
 
   return (
     <div className="min-h-screen bg-gray-100 pb-32">
@@ -216,7 +221,7 @@ const ManageUsers = () => {
               value={roleFilter}
               onChange={(e) => {
                 setRoleFilter(e.target.value);
-                setCurrentPage(1); // Reset página al cambiar filtro
+                setCurrentPage(1);
               }}
             >
               <option value="">Tipo de usuario</option>
@@ -234,7 +239,7 @@ const ManageUsers = () => {
           </button>
         </div>
 
-        {/* Tabla de usuarios */}
+        {/* Tabla */}
         {loading ? (
           <div className="text-center py-6">Cargando usuarios...</div>
         ) : errorMsg ? (
@@ -248,7 +253,7 @@ const ManageUsers = () => {
                     <th className="px-6 py-3 text-left">Usuario</th>
                     <th className="px-6 py-3 text-left">Rol</th>
                     <th className="px-6 py-3 text-left">Email</th>
-                    <th className="px-6 py-3 text-left">Fecha de registro</th>
+                    <th className="px-6 py-3 text-left">Fecha</th>
                     <th className="px-6 py-3 text-left">Estado</th>
                     <th className="px-6 py-3 text-left">Acciones</th>
                   </tr>
@@ -268,10 +273,15 @@ const ManageUsers = () => {
                         <td className="px-6 py-4">{user.email}</td>
                         <td className="px-6 py-4">{user.fecha}</td>
                         <td className="px-6 py-4">
-                          <span className="px-2 py-1 rounded-full bg-green-100 text-green-800">{user.estado}</span>
+                          <span className="px-2 py-1 rounded-full bg-green-100 text-green-800">
+                            {user.estado}
+                          </span>
                         </td>
                         <td className="px-6 py-4">
-                          <button onClick={(e) => handleMenuClick(e, index)} className="hover:bg-gray-100 p-1 rounded-full">
+                          <button
+                            onClick={(e) => handleMenuClick(e, index, user._id)}
+                            className="hover:bg-gray-100 p-1 rounded-full"
+                          >
                             <MoreVertIcon />
                           </button>
                         </td>
@@ -306,8 +316,21 @@ const ManageUsers = () => {
         </div>
       </div>
 
-      <ActionMenu isOpen={activeMenu !== null} position={menuPosition} onClose={closeMenu} />
-      <UserRegistrationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <ActionMenu
+        isOpen={activeMenu !== null}
+        position={menuPosition}
+        onClose={closeMenu}
+        onDelete={() => {
+          if (selectedUserId) deleteUser(selectedUserId);
+        }}
+      />
+
+      <UserRegistrationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onUserCreated={() => fetchUsers(currentPage, roleFilter, debouncedSearchTerm)}
+      />
+
       <NavFooter />
     </div>
   );

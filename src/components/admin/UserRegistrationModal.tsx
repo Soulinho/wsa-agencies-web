@@ -4,7 +4,7 @@ import logoLogin from '../../assets/logo-login.png';
 interface UserRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUserCreated?: () => void; // <-- función opcional para notificar creación
+  onUserCreated?: () => void;
 }
 
 const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrationModalProps) => {
@@ -33,7 +33,6 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const tipo_usuario = rol.toUpperCase(); // admin → ADMIN
 
       const res = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
         method: 'POST',
@@ -46,7 +45,7 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
           nombre_cliente: nombre,
           email,
           telefono: fono,
-          tipo_usuario,
+          tipo_usuario: rol,
           pais_cliente: pais,
           username: usuario,
           password,
@@ -58,7 +57,6 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
       if (!res.ok) {
         setError(data.message || 'Error al registrar el usuario.');
       } else {
-        // Limpiar campos
         setEmpresa('');
         setNombre('');
         setEmail('');
@@ -67,9 +65,7 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
         setPais('');
         setUsuario('');
         setPassword('');
-        // Notificar creación al componente padre (para refrescar tabla, etc)
         if (onUserCreated) onUserCreated();
-        // Cerrar modal
         onClose();
       }
     } catch (err) {
@@ -100,7 +96,6 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          {/* EMPRESA */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">Empresa</label>
             <input
@@ -112,7 +107,6 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
             />
           </div>
 
-          {/* NOMBRE */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">Nombre completo</label>
             <input
@@ -124,7 +118,6 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
             />
           </div>
 
-          {/* EMAIL */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">E-Mail</label>
             <input
@@ -137,7 +130,6 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
             />
           </div>
 
-          {/* FONO */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">Fono de contacto</label>
             <input
@@ -150,7 +142,6 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
             />
           </div>
 
-          {/* ROL */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">Rol de usuario</label>
             <div className="relative">
@@ -161,9 +152,11 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
                 disabled={loading}
               >
                 <option value="">Seleccione rol de usuario</option>
-                <option value="admin">Administrador</option>
-                <option value="operator">Operador</option>
-                <option value="client">Cliente</option>
+                <option value="ADMINISTRADOR">Administrador</option>
+                <option value="TRABAJADOR">Trabajador</option>
+                <option value="CLIENTE">Cliente</option>
+                <option value="ASISTENTE">Asistente</option>
+                <option value="ADMINISTRATIVO">Administrativo</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
                 <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,7 +166,6 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
             </div>
           </div>
 
-          {/* PAÍS */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">País</label>
             <input
@@ -185,7 +177,6 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
             />
           </div>
 
-          {/* USUARIO */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">User</label>
             <input
@@ -197,7 +188,6 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
             />
           </div>
 
-          {/* PASSWORD */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">Password</label>
             <input
@@ -210,10 +200,8 @@ const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrat
             />
           </div>
 
-          {/* ERRORES */}
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
-          {/* BOTÓN */}
           <div className="flex justify-center">
             <button
               type="submit"
