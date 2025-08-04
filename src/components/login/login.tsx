@@ -56,19 +56,23 @@ const Login: React.FC = () => {
         localStorage.setItem('token', response.data.token);
         console.log('Login exitoso, navegando a /admin');
         setIsRedirecting(true);
-        // Da un pequeño delay para que el mensaje se vea
         setTimeout(() => {
           navigate('/admin');
         }, 500);
       } else {
-        console.log('Login fallido:', response.data.message);
         setError(response.data.message || 'Usuario o contraseña incorrectos');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error en login:', err);
-      setError('Error de conexión con el servidor');
+
+      // Aquí se intenta leer el mensaje del backend si está disponible
+      const backendMessage =
+        err.response?.data?.message || 'Error de conexión con el servidor';
+
+      setError(backendMessage);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-gray-100 relative">

@@ -1,26 +1,95 @@
+import { useState } from 'react';
 import logoLogin from '../../assets/logo-login.png';
 
 interface UserRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onUserCreated?: () => void; // <-- función opcional para notificar creación
 }
 
-const UserRegistrationModal = ({ isOpen, onClose }: UserRegistrationModalProps) => {
+const UserRegistrationModal = ({ isOpen, onClose, onUserCreated }: UserRegistrationModalProps) => {
+  const [empresa, setEmpresa] = useState('');
+  const [nombre, setNombre] = useState('');
+  const [email, setEmail] = useState('');
+  const [fono, setFono] = useState('');
+  const [rol, setRol] = useState('');
+  const [pais, setPais] = useState('');
+  const [usuario, setUsuario] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!empresa || !nombre || !email || !fono || !rol || !pais || !usuario || !password) {
+      setError('Por favor completa todos los campos.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const tipo_usuario = rol.toUpperCase(); // admin → ADMIN
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          empresa_cliente: empresa,
+          nombre_cliente: nombre,
+          email,
+          telefono: fono,
+          tipo_usuario,
+          pais_cliente: pais,
+          username: usuario,
+          password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || 'Error al registrar el usuario.');
+      } else {
+        // Limpiar campos
+        setEmpresa('');
+        setNombre('');
+        setEmail('');
+        setFono('');
+        setRol('');
+        setPais('');
+        setUsuario('');
+        setPassword('');
+        // Notificar creación al componente padre (para refrescar tabla, etc)
+        if (onUserCreated) onUserCreated();
+        // Cerrar modal
+        onClose();
+      }
+    } catch (err) {
+      setError('Error de red o del servidor.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-white/20 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
       onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="bg-white rounded-lg p-4 md:p-6 w-full md:w-[500px] max-h-[90vh] overflow-y-auto shadow-xl">
         <div className="flex flex-col items-center mb-6 relative">
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="absolute right-0 top-0 text-3xl text-gray-500 hover:text-gray-700 font-light"
           >
             ×
@@ -29,106 +98,131 @@ const UserRegistrationModal = ({ isOpen, onClose }: UserRegistrationModalProps) 
           <h2 className="text-[26px] font-bold text-[#003366]">Registrar Usuario</h2>
           <div className="w-[85px] h-[2px] bg-[#70C8CA] mt-2"></div>
         </div>
-        
-        <form className="space-y-4">
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          {/* EMPRESA */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">Empresa</label>
-            <div className="relative">
-              <select className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 pr-8 text-black appearance-none bg-white">
-                <option value="" className="text-black">Seleccione una empresa</option>
-                <option value="empresa1" className="text-black">Empresa 1</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-                </svg>
-              </div>
-            </div>
+            <input
+              value={empresa}
+              onChange={(e) => setEmpresa(e.target.value)}
+              placeholder="Ingrese nombre de la empresa"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]"
+              disabled={loading}
+            />
           </div>
-          
+
+          {/* NOMBRE */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">Nombre completo</label>
-            <input 
-              type="text" 
+            <input
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
               placeholder="Ingrese nombre completo"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]" 
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]"
+              disabled={loading}
             />
           </div>
-          
+
+          {/* EMAIL */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">E-Mail</label>
-            <input 
-              type="email" 
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="Ingrese correo electrónico"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]" 
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]"
+              disabled={loading}
             />
           </div>
-          
+
+          {/* FONO */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">Fono de contacto</label>
-            <input 
-              type="tel" 
+            <input
+              type="tel"
+              value={fono}
+              onChange={(e) => setFono(e.target.value)}
               placeholder="Ingrese fono de contacto"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]" 
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]"
+              disabled={loading}
             />
           </div>
-          
+
+          {/* ROL */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">Rol de usuario</label>
             <div className="relative">
-              <select className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 pr-8 text-black appearance-none bg-white">
-                <option value="" className="text-black">Seleccione rol de usuario</option>
-                <option value="admin" className="text-black">Administrador</option>
-                <option value="operator" className="text-black">Operador</option>
-                <option value="client" className="text-black">Cliente</option>
+              <select
+                value={rol}
+                onChange={(e) => setRol(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 pr-8 text-black appearance-none bg-white"
+                disabled={loading}
+              >
+                <option value="">Seleccione rol de usuario</option>
+                <option value="admin">Administrador</option>
+                <option value="operator">Operador</option>
+                <option value="client">Cliente</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
                 <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
+                  <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
                 </svg>
               </div>
             </div>
           </div>
-          
+
+          {/* PAÍS */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">País</label>
-            <div className="relative">
-              <select className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 pr-8 text-black appearance-none bg-white">
-                <option value="" className="text-black">Seleccione un país</option>
-                <option value="pais1" className="text-black">País 1</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-                </svg>
-              </div>
-            </div>
+            <input
+              value={pais}
+              onChange={(e) => setPais(e.target.value)}
+              placeholder="Ingrese país"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]"
+              disabled={loading}
+            />
           </div>
-          
+
+          {/* USUARIO */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">User</label>
-            <input 
-              type="text" 
+            <input
+              value={usuario}
+              onChange={(e) => setUsuario(e.target.value)}
               placeholder="Ingrese nombre de usuario"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]" 
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]"
+              disabled={loading}
             />
           </div>
-          
+
+          {/* PASSWORD */}
           <div>
             <label className="block text-sm font-bold text-[#00335F]">Password</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="Ingrese la contraseña de usuario"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]" 
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 placeholder-[#CACACA]"
+              disabled={loading}
             />
           </div>
-          
+
+          {/* ERRORES */}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+
+          {/* BOTÓN */}
           <div className="flex justify-center">
-            <button 
-              type="submit" 
-              className="w-full md:w-[210px] bg-[#00335F] text-white font-bold py-2 px-4 rounded hover:bg-[#002347]"
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full md:w-[210px] font-bold py-2 px-4 rounded text-white ${
+                loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#00335F] hover:bg-[#002347]'
+              }`}
             >
-              Registrar Usuario
+              {loading ? 'Registrando...' : 'Registrar Usuario'}
             </button>
           </div>
         </form>

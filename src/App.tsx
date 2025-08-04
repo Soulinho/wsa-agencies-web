@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import './App.css'
 import AdminHome from './components/admin/Home'
 import ManageUsers from './components/admin/manage-users'
@@ -42,14 +42,18 @@ function App() {
     <Router>
       <div>
         <Routes>
+          {/* Redirección al login */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+
+          {/* Resto de tus rutas */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/recover-password" element={<RecoverPassword />} />
           <Route path="/admin" element={<AdminHome />} />
           <Route path="/admin/manage-users" element={<ManageUsers />} />
           <Route path="/admin/manage-vessels" element={<ManageVessels />} />
           <Route path="/vessel/:id" element={<VesselDetails />} />
           <Route path="/admin/manage-client" element={<ManageClient />} />
           <Route path="/admin/manage-services" element={<ManageServices />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/recover-password" element={<RecoverPassword />} />
           <Route path="/admin/manage-services/:serviceName" element={<SubServices />} />
           <Route path="/admin/services/:serviceName/:subServiceName/fields" element={<ServiceFields />} />
           <Route path="/operator" element={<OperatorHome />} />
